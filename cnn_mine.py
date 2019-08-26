@@ -18,7 +18,7 @@ pip install --upgrade tensorflow
 
 # Importing Keras libraries and packages
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 from keras.models import Sequential
 from keras.layers import Convolution2D
 from keras.layers import MaxPooling2D
@@ -26,6 +26,13 @@ from keras.layers import Flatten
 from keras.layers import Dense
 from keras.utils.vis_utils import plot_model #vis
 from keras.callbacks import ModelCheckpoint
+import tensorflow as tf
+
+from keras import backend as K
+config = tf.ConfigProto()
+config.gpu_options.allow_growth=True
+sess = tf.Session(config=config)
+K.set_session(sess)
 
 # Initialising the CNN
 classifier = Sequential()
@@ -34,6 +41,10 @@ classifier = Sequential()
 classifier.add(Convolution2D(filters = 32, kernel_size = (3, 3), input_shape=(64, 64, 3), activation="relu"))
 
 # Step 2 - Pooling
+classifier.add(MaxPooling2D(pool_size = (2, 2)))
+
+# Step 2.5 - adding a second convolution and pooling layer
+classifier.add(Convolution2D(filters = 32, kernel_size = (3, 3), activation="relu"))
 classifier.add(MaxPooling2D(pool_size = (2, 2)))
 
 # Step 3 - FLattener
@@ -48,13 +59,13 @@ classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = [
 
 ### Part 2 - Fitting to CNN to the images    
 
-# //Model saving//
+# //Model saving// https://www.tensorflow.org/tutorials/keras/save_and_restore_models
 # Save the weights
 """
-classifier.save_weights('./checkpoints/my_checkpoint')
+classifier.save_weights('my_checkpoint')
 
 # Restore the weights
-classifier.load_weights('./checkpoints/my_checkpoint')
+classifier.load_weights('my_checkpoint')
 
 # Save entire model to a HDF5 file
 classifier.save('my_model.h5')
@@ -71,7 +82,7 @@ checkpoint_dir = os.path.dirname(checkpoint_path)
 cp_callback = ModelCheckpoint(
     checkpoint_path, verbose=1, save_weights_only=True,
     # Save weights, every 5-epochs.
-    period=5)
+    period=1)
 # //end model saving//
 
 # Image preprocessing   https://keras.io/preprocessing/image/
@@ -87,22 +98,22 @@ test_datagen = ImageDataGenerator(rescale=1./255)
 training_set = train_datagen.flow_from_directory(
         'dataset/training_set',
         target_size=(64, 64), # expected image size WILL VARY
-        batch_size=32,
+        batch_size=64, #was 32
         class_mode='binary')
 
 test_set = test_datagen.flow_from_directory(
         'dataset/test_set',
         target_size=(64, 64), # expected image size WILL VARY
-        batch_size=32,
+        batch_size=64, # was 32
         class_mode='binary')
 
 classifier.fit_generator(
         training_set,
         steps_per_epoch=8000,
-        epochs=50,
+        epochs=10,
         validation_data=test_set,
-        validation_steps=2000, callbacks = [cp_callback])
-
+        validation_steps=2000, callbacks = [cp_callback]
+        )
 
 
 #visualization
